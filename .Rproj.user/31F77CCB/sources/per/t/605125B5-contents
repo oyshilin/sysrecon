@@ -1,0 +1,13 @@
+Package: Sysrecon
+Type: Package
+Title: Systematical metabolic reconstruction
+Version: 0.1.0
+Author: Shilin Ouyang,Zihao Li,Jiamin Hu,Miyuan Cao,Feng Yu,Longfei Mao
+Maintainer: Shilin Ouyang <ouyangshilin@hnu.edu.cn>
+Description: This package can visualize the steps, transformation, databases and tools used in a metabolic reconstruction,
+    and it can print the steps and the elements that a step needs.
+License: GPL-3
+Imports: readxl,tidyverse,ggtree,ape,tm,renv,methods,plyr,dplyr,SnowballC,RColorBrewer,stringr
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.2

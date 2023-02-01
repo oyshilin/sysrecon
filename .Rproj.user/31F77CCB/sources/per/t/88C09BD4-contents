@@ -1,0 +1,86 @@
+#' @title draw_tree
+#' @description Evolutionary relationship drawing
+#' @param matrix A matrix
+#' @param stepTypes Grouping information for reconstruction process
+#' @param contentTypes Grouping information for content information, conversion information, database and tool information
+#' @param case A numeric value specifying a row or column cluster.1 for row and 2 for column.
+#' @return A rvolutionary tree diagram
+#' @export
+#' @import ggtree
+#' @import tidyverse
+#' @import ape
+#' @examples
+#' plot = draw_tree(stepsMatrix)
+
+draw_tree = function(matrix, stepTypes, contentTypes, case = 1){
+        # Clustering of information on rows
+        if(case == 1){
+                matrix[is.na(matrix)] = 0
+
+                rownames(matrix) = matrix$Steps
+                data = matrix[,-c(1:5)]
+
+                # Calculate the evolutionary tree distance
+                tree = hclust(dist(data))
+                # Convert to the phylo object
+                tree = ape::as.phylo(tree)
+
+                # Group information of metabolic processes
+                info = data.frame(label = rownames(data), group = stepTypes$group[match(rownames(data), stepTypes$label)])
+                # Integrate the group information
+                tree = full_join(tree, info , by='label')
+                # Color
+                col = colorRampPalette(brewer.pal(12,'Paired'))(13)
+
+                p = ggtree(tree)+
+                        # Draw evolutionary tree lines with colors sorted by group information
+                        geom_tree(aes(color = group), size = 1.2)+
+                        geom_tiplab(size=2, aes(color = group), hjust = -0.01) + xlim(0,6) +
+                        # Set the color information and remove the NA in the legend
+                        scale_color_manual(values = col[1:8],
+                                           na.translate=FALSE)+
+                        # Modify the legend title
+                        labs(colour = 'Group')+
+                        # Adjust the thickness of the legend lines
+                        guides(colour = guide_legend(override.aes = list(size=2)))+
+                        theme(legend.text = element_text(size = 10),
+                              legend.title = element_text(size = 14))
+        }
+
+        # Cluster the information of column
+        if(case == 2){
+                matrix[is.na(matrix)] = 0
+                rownames(matrix) = matrix$Steps
+
+                # Remove frequency information
+                data = t(matrix[,-c(1:5)])
+
+                # Calculate the evolutionary tree distance
+                tree1 = hclust(dist(data))
+                # Convert to phylo object
+                tree1 = ape::as.phylo(tree1)
+
+                # Group information of metabolic content
+                info = data.frame(label = rownames(data), group = contentTypes$group[match(rownames(data), contentTypes$label)])
+                # Integrate group information
+                tree1 = full_join(tree1, info , by='label')
+                # Color
+                col = colorRampPalette(brewer.pal(12,'Paired'))(13)
+
+                p = ggtree(tree1)+
+                        # Draw evolutionary tree lines with colors sorted by group information
+                        geom_tree(aes(color = group), size = 1.2)+
+                        geom_tiplab(size=2, aes(color = group), hjust = -0.01) + xlim(0,14) +
+                        # Set the color information to remove the NA in the legend
+                        scale_color_manual(values = col[9:13],
+                                           na.translate=FALSE)+
+                        # Modify the legend title
+                        labs(colour = 'Group')+
+                        # Adjust the thickness of the legend lines
+                        guides(colour = guide_legend(override.aes = list(size=2)))+
+                        theme(legend.text = element_text(size = 10),
+                              legend.title = element_text(size = 14))
+        }
+
+        return(p)
+}

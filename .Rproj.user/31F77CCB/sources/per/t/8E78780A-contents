@@ -1,0 +1,798 @@
+#' @title convert_2_step
+#' @description Input the txt and output the visualization of the steps, transformation and databases and tools.
+#' @details Input takes a data.frame x with two variables v and w and returns the maximum knapsack value and which elements (rows in the data.frame).
+#' @param matrixProcessFile The data frame produced by the vizProcess.
+#' @param variable An excel contains three different variables.
+#' @return The steps and the elements that metabolic reconstruction needs.
+#' @import tidyverse
+#' @export
+#' @examples
+#' exam <- convert_2_step(matrixProcessFile, variable)
+
+  convert_2_step <- function(matrixProcessFile, variable){
+    info <- variable[,1:4]
+    slotInfo <- list()
+    for (i in 1:nrow(info)) {
+      slotInfo[i] <- info$class[i]
+    }
+    names(slotInfo) <- info$label
+    setClass('systemrecon', slots = slotInfo)
+
+   setValidity('systemrecon',
+            function(object){
+              # The length of ID is the same as the Taxon_id's.
+              # if(length(object@ID) != length(object@Taxon_id) | length(object@ID) != 1 | length(object@Taxon_id) != 1){
+              #         cat('Please ensure that the length of both ID and Taxon_id is 1!!!\n')
+              # }
+              #
+              # The length of NCBI_ID and uniprot_gene cannot be zero simultaneously
+              if(length(object@NCBI_gene) == 0 & length(object@Uniprot_gene) == 0){
+                cat('Please make sure that at least one of NCBI_gene and Uniprot_gene contains information!!!\n')
+              }
+
+              # The length of KEGG_reaction and MetaCyc_reaction cannot be zero simultaneously
+              if(length(object@KEGG_reaction) == 0 & length(object@MetaCyc_reaction) == 0){
+                cat('Please make sure that at least one of KEGG_reaction and MetaCyc_reaction contains information!!!\n')
+              }
+
+              # The metabolic_function contains reaction ID and subway information to which the reaction belongs to at least.
+              if(ncol(object@Metabolic_function) < 2){
+                cat('Please make sure that Metabolic_function contains at least \nthe reaction ID and the subsystem information to which the reaction belongs!!!\n')
+              }
+
+              # The metabolic_function contains reaction ID and reaction equation information.
+              if(ncol(object@Metabolic_reaction) < 2){
+                cat('Please make sure that Metabolic_reaction contains \nat least reaction ID and reaction equation information!!!\n')
+              }
+
+              # The Metabolites_id contains least metabolite ID and metabolite name information.
+              if(ncol(object@Metabolites_id) < 2){
+                cat('Please make sure that Metabolites_id contains \nat least metabolite ID and metabolite name information!!!\n')
+              }
+
+              # Reconstruction_data contains at least Reaction ID, Metabolite ID, GPR, Flux Lower Limit, Flux Upper Limit and Stoichiometric Matrix information.
+              if(length(object@Reconstruction_data) < 6){
+                cat('Please make sure that Reconstruction_data contains at least \nReaction ID, Metabolite ID, GPR, Flux Lower Limit, Flux Upper Limit and Stoichiometric Matrix information')
+              }
+
+              # Reconstruction_data_reference contains at least Reaction ID, Metabolite ID, GPR, Flux Lower Limit, Flux Upper Limit and Stoichiometric Matrix information.
+              if(length(object@Reconstruction_data_reference) < 6){
+                cat('Please make sure that Reconstruction_data_reference contains at least \nReaction ID, Metabolite ID, GPR, Flux Lower Limit, Flux Upper Limit and Stoichiometric Matrix information')
+              }
+
+              # Data_statistics_metabolites contains at least metabolite ID and corresponding statistics.
+              if(ncol(object@Data_statistics_metabolites) < 2){
+                cat('Please ensure that Data_statistics_metabolites contains \nat least metabolite ID and corresponding statistics!!!\n')
+              }
+
+              # PubChem_molecular_formula contains at least metabolite ID and neutral molecular formula information.
+              if(ncol(object@PubChem_molecular_formula) < 2){
+                cat('Please make sure that PubChem_molecular_formula contains \nat least metabolite ID and neutral molecular formula information!!!\n')
+              }
+
+              # Brenda_molecular_formula contains at least metabolite ID and charged molecular formula information.
+              if(ncol(object@Brenda_molecular_formula) < 2){
+                cat('Please make sure that Brenda_molecular_formula contains \nat least metabolite ID and charged molecular formula information!!!\n')
+              }
+
+              # Neutral_molecular_formula contains at least metabolite ID and neutral molecular formula information.
+              if(ncol(object@Neutral_molecular_formula) < 2){
+                cat('Please make sure that Neutral_molecular_formula contains \nat least metabolite ID and neutral molecular formula information!!!\n')
+              }
+
+              # Charged_molecular_formula contains at least metabolite ID and charged molecular formula information
+              if(ncol(object@Charged_molecular_formula) < 2){
+                cat('Please make sure that Charged_molecular_formula contains \nat least metabolite ID and charged molecular formula information!!!\n')
+              }
+
+              # Chebi_molecular_formula contains at least metabolite ID, metabolite molecular weight and metabolite charge information.
+              if(ncol(object@Chebi_molecular_formula) < 3){
+                cat('Please ensure that Chebi_molecular_formula contains at least \nmetabolite ID, metabolite molecular weight and metabolite charge information!!!\n')
+              }
+
+              # Web_GCM_Gibbs contains at least the metabolic ID and corresponding Gibbs free energy information.
+              if(ncol(object@Web_GCM_Gibbs) < 2){
+                cat('Please make sure that Web_GCM_Gibbs contains \nat least the metabolic ID and corresponding Gibbs free energy information!!!\n')
+              }
+
+              # Gibbs_free_energy_Information contains at least the reaction ID and corresponding calculated Gibbs free energy information.
+              if(ncol(object@Gibbs_free_energy_Information) < 2){
+                cat('Please ensure that Gibbs_free_energy_Information contains \nat least the reaction ID and corresponding calculated Gibbs free energy information!!!\n')
+              }
+
+              # Gene_id and Protein_id cannot be zero at the same time, and have at least one column of information.
+              if(ncol(object@Gene_id) == 0 & ncol(object@Protein_id) ==0){
+                cat('Please ensure that Gene_id and Protein_id cannot be zero at the same time, \nand have at least one column of information')
+              }
+
+              # Cellular_compartment contains at least metabolite ID and cellular compartment information.
+              if(ncol(object@Cellular_compartment) < 2){
+                cat('Please ensure that Cellular_compartment contains at least \nmetabolite ID and cellular compartment information!!!\n')
+              }
+
+              # Subsystem_information contains at least reaction ID and subsystem information.
+              if(ncol(object@Subsystem_information) < 2){
+                cat('Please make sure that Subsystem_information contains at least \nreaction ID and subsystem information!!!\n')
+              }
+
+              # Identifiers_metabolites contains at least the metabolite ID, the corresponding KEGG's metabolite identifier and the corresponding Metacyc's metabolite identifier
+              if(ncol(object@Identifiers_metabolites) < 3){
+                cat("Please make sure Identifiers_metabolites contains at least the metabolite ID, \nthe corresponding KEGG's metabolite identifier and the corresponding Metacyc's metabolite identifier!!!\n")
+              }
+
+              # Uniform_identifier_metabolites contains at least the metabolite ID, the corresponding KEGG's metabolite identifier or the corresponding Metacyc's metabolite identifier.
+              if(ncol(object@Uniform_identifier_metabolites) < 2){
+                cat("Please make sure that Uniform_identifier_metabolites contains at least the metabolite ID, \nthe corresponding KEGG's metabolite identifier or the corresponding Metacyc's metabolite identifier!!!\n")
+              }
+
+              # Spontaneous_reactions contains at least 1 column of information.
+              if(ncol(object@Spontaneous_reactions) == 0){
+                cat("Please make sure that Spontaneous_reactions contains at least 1 column of information!!!\n")
+              }
+
+              # Extracellular_and_periplasmic_transport_reactions contains at least 1 column of information.
+              if(ncol(object@Extracellular_and_periplasmic_transport_reactions) == 0){
+                cat("Please make sure that Extracellular_and_periplasmic_transport_reactions contains at least 1 column of information!!!\n")
+              }
+
+              # Exchange_reactions contains at least 1 column of information.
+              if(ncol(object@Exchange_reactions) == 0){
+                cat("Please make sure that Exchange_reactions contains at least 1 column of information!!!\n")
+              }
+
+              # Intracellular_transport_reactions contains at least 1 column of information.
+              if(ncol(object@Intracellular_transport_reactions) == 0){
+                cat("Please make sure that Intracellular_transport_reactions contains at least 1 column of information!!!\n")
+              }
+
+              #  Amino_acid_weight contains \nat least amino acid ID and amino acid weight information.
+              if(ncol(object@Amino_acid_weight) < 2){
+                cat("Please make sure that Amino_acid_weight contains \nat least amino acid ID and amino acid weight information!!!\n")
+              }
+
+              # Amino_acid_molecular_weight contains \nat least amino acid ID and amino acid molar mass information.
+              if(ncol(object@Amino_acid_molecular_weight) < 2){
+                cat("Please make sure that Amino_acid_molecular_weight contains \nat least amino acid ID and amino acid molar mass information!!!\n")
+              }
+
+              # Dry_weight contains one message.
+              if(length(object@Dry_weight) != 1){
+                cat("Make sure Dry_weight contains a message!!!\n")
+              }
+
+              # Nucleotide_weight contains at least Nucleotide ID and Nucleotide weight information
+              if(ncol(object@Nucleotide_weight) < 2){
+                cat("Please make sure Nucleotide_weight contains \nat least Nucleotide ID and Nucleotide weight information!!!\n")
+              }
+
+              #Nucleotide_molecular_weight contains at least nucleotide ID and nucleotide molar mass information.
+              if(ncol(object@Nucleotide_molecular_weight) < 2){
+                cat("Please make sure that Nucleotide_molecular_weight contains \nat least nucleotide ID and nucleotide molar mass information!!!\n")
+              }
+
+              # Biomass_reactions contains only one message.
+              if(length(object@Biomass_reactions) != 1){
+                cat("Please make sure that Biomass_reactions contains only 1 message!!!\n")
+              }
+
+              # Demand_reactions contains at least one column of information.
+              if(ncol(object@Demand_reactions) == 0){
+                cat("Please make sure that Demand_reactions contains at least 1 column of information!!!\n")
+              }
+
+              # Sink_reactions contains at least one column of information.
+              if(ncol(object@Sink_reactions) == 0){
+                cat("Please make sure that Sink_reactions contains at least 1 column of information!!!\n")
+              }
+
+              # Objective_reactionz contains only one message.
+              if(length(object@Objective_reaction) != 1){
+                cat("Please make sure Objective_reactionz contains only 1 message!!!\n")
+              }
+
+              # Constraints contain at least reaction information, lower flux limit and upper flux limit.
+              if(ncol(object@Constraints) < 3){
+                cat("Please make sure that Constraints contain at least reaction information, \nlower flux limit and upper flux limit!!!\n")
+              }
+
+              #  Mass_Charge_Conservation_Assessment contains at least reactions and an evaluation of each reaction.
+              if(ncol(object@Mass_Charge_Conservation_Assessment) < 2){
+                cat("Please make sure that Mass_Charge_Conservation_Assessment contains \nat least reactions and an evaluation of each reaction!!!\n")
+              }
+
+              # Elemental_balance contains at least reaction ID and balance.
+              if(ncol(object@Elemental_balance) < 2){
+                cat("Please make sure that Elemental_balance contains \nat least reaction ID and balance information!!!\n")
+              }
+
+              # Terminal_metabolites has at least one column of information.
+              if(ncol(object@Terminal_metabolites) == 0){
+                cat("Please make sure that Terminal_metabolites has at least 1 column of information!!!\n")
+              }
+
+              # Gap_reactions has at least 1 column of information.
+              if(ncol(object@Gap_reactions) == 0){
+                cat("Please make sure that Gap_reactions has at least 1 column of information!!!\n")
+              }
+
+              # Missing_exchange_reactions has at least one column of information.
+              if(ncol(object@Missing_exchange_reactions) == 0){
+                cat("Please make sure that Missing_exchange_reactions has at least 1 column of information!!!\n")
+              }
+
+              # Type_III_pathway has at least one column of information.
+              if(ncol(object@Type_III_pathway) == 0){
+                cat("Please make sure that Type_III_pathway has at least 1 column of information!!!\n")
+              }
+
+              # Network_gaps has at least one column of information.
+              if(ncol(object@Network_gaps) == 0){
+                cat("Please make sure that Network_gaps has at least 1 column of information!!!\n")
+              }
+
+              # Biomass_metabolites has at least one column of information.
+              if(ncol(object@Biomass_metabolites) == 0){
+                cat("Please make sure that Biomass_metabolites has at least 1 column of information!!!\n")
+              }
+
+              # min_or_max contains one message.
+              if(length(object@min_or_max) != 1){
+                cat("Please make sure min_or_max contains 1 message!!!\n")
+              }
+
+              # Metabolic_flux_value contains at least reaction ID and flux value information.
+              if(ncol(object@Metabolic_flux_value) < 2){
+                cat("Please make sure that Metabolic_flux_value contains at least reaction ID and flux value information!!!\n")
+              }
+
+              # Growth contains only one message.
+              if(length(object@Growth) != 1){
+                cat("Please make sure that Growth contains only 1 message!!!\n")
+              }
+
+              # Secretions contains only one message.
+              if(length(object@Secretions) != 1){
+                cat("Please make sure that Secretions contains only 1 message!!!\n")
+              }
+
+              # Mutsecretion only contains one column of information.
+              if(ncol(object@Mutisecretion) != 1){
+                cat("Please make sure that Mutsecretion only contains 1 column of information!!!\n")
+              }
+
+              # Rich_media only contains one column of information.
+              if(ncol(object@Rich_media) != 1){
+                cat("Please make sure that Rich_media only contains 1 column of information!!!\n")
+              }
+
+              # Block_reactions contains at least one column of information.
+              if(ncol(object@Block_reactions) == 0){
+                cat("Please make sure that Block_reactions contains at least 1 column of information!!!\n")
+              }
+
+              # Knockout contains only one message.
+              if(length(object@Knockout) != 1){
+                cat("Please make sure Knockout contains only 1 message!!!\n")
+              }
+
+              #  Model_predict_correctly contains only one message.
+              if(length(object@Model_predict_correctly) != 1){
+                cat("Please make sure Model_predict_correctly contains only 1 message!!!\n")
+              }
+
+              # Model_growing_too_fast contains only 1 message.
+              if(length(object@Model_growing_too_fast) != 1){
+                cat("Please make sure Model_growing_too_fast contains only 1 message!!!\n")
+              }
+
+              # Cofactors contains at least one column of information.
+              if(ncol(object@Cofactors) == 0){
+                cat("Please make sure that Cofactors contains at least 1 column of information!!!\n")
+              }
+
+              # Identifiers_metabolites contains at least metabolite ID, corresponding KEGG identifier and MetaCyc identifier information.
+              if(ncol(object@Identifiers_metabolites) < 3){
+                cat("Please make sure Identifiers_metabolites contains \nat least metabolite ID, corresponding KEGG identifier and MetaCyc identifier information!!!\n")
+              }
+
+              # Biomass_metabolites_coefficient contains at least metabolite ID and coefficient information.
+              if(ncol(object@Biomass_metabolites_coefficient) < 2){
+                cat("Please make sure Biomass_metabolites_coefficient contains \nat least metabolite ID and coefficient information!!!\n")
+              }
+            })
+
+
+load('../data/file.RData')
+
+# Create the multiple subclasses in the loop
+for (i in 1:(nrow(file)+1)) {
+  setClass(paste0('t', i), contains = 'systemrecon')
+}
+# Instantiate the first subclass t1
+test <- new('t1')
+
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step1',])){
+    cat('step1: Taxon_id + NCBI_gene + Uniprot_gene => Genetic_information\nAdd "Genetic_information" info\n')
+    test@Genetic_information = data.frame(geneID = character(), geneInfo = character())
+    print(test@Genetic_information)
+    cat('\n')}
+
+  #step2
+
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step2',])){
+    cat('step2: Genetic_information + KEGG_reaction + MetaCyc_reaction => Metabolic_function\nAdd "Metabolic_function" info\n')
+    test@Metabolic_function = data.frame(metabolicFunction = character())
+    print(test@Metabolic_function)
+    cat('\n')
+  }
+
+  #step3
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step3',]) ){
+    cat('step3: Metabolic_function + KEGG_reaction + MetaCyc_reaction => Metabolic_reaction\nAdd "Metabolic_reaction" info\n')
+    test@Metabolic_reaction = data.frame(metabolicReaction = character())
+    print(test@Metabolic_reaction)
+    cat('\n')
+  }
+
+  #step4
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step4',])){
+    cat('step4: Metabolic_reaction + GPR => Reconstruction_data\nAdd "Reconstruction_data" info\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(),
+                                    s = c('It is a matrix(m * n)'), lb = character(), ub = character())
+    print(test@Reconstruction_data)
+    cat('\n')
+  }
+
+  #step5
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step5',])){
+    cat('step5: Genome_sequence + Genome_sequence_reference + Reconstruction_data_reference => Reconstruction_data\nAdd "Reconstruction_data" info\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(),
+                                    s = c('It is a matrix(m * n)'), lb = character(), ub = character())
+    print(test@Reconstruction_data)
+    cat('\n')
+  }
+
+  #step7
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step7',])){
+    cat('step7: Metabolites_id + Cofactors => Data_statistics_metabolites\nAdd "Data_statistics_metabolites" info\n')
+    test@Data_statistics_metabolites = data.frame(mets = character(), cofactor = character(), result = character())
+    print(test@Data_statistics_metabolites)
+    cat('\n')
+  }
+
+  #step8
+
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step8',])){
+    cat('step8: KEGG_reaction + PubChem_molecular_formula + Metabolites_id => Neutral_molecular_formula\nAdd "Neutral_molecular_formula" info\n')
+    test@Neutral_molecular_formula = data.frame(mets = character(), neutral = character())
+    print(test@Neutral_molecular_formula)
+    cat('\n')
+  }
+
+  #step9
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step9',])){
+    cat('step9: KEGG_reaction + Brenda_molecular_formula + Metabolites_id => Charged_molecular_formula\nAdd "Charged_molecular_formula" info\n')
+    test@Charged_molecular_formula = data.frame(mets = character(), charged = character())
+    print(test@Charged_molecular_formula)
+    cat('\n')
+  }
+
+
+  #step10
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step10',])){
+    cat('step10: Chebi_molecular_formula + Metabolic_reaction => Conservation_of_mass_and_charge\nAdd "Conservation_of_mass_and_charge" info\n')
+    test@Conservation_of_mass_and_charge = data.frame(rxns = character(), conservation = logical())
+    print(test@Conservation_of_mass_and_charge)
+    cat('\n')
+  }
+
+  #step11
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step11',])){
+    cat('step11: Web_GCM_Gibbs + Metabolic_reaction => Gibbs_free_energy_Information\nAdd "Gibbs_free_energy_Information" info\n')
+    test@Gibbs_free_energy_Information = data.frame(rxns = character(), Gibbs = numeric())
+    print(test@Gibbs_free_energy_Information)
+    cat('\n')
+  }
+
+  #step12
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step12',])){
+    cat('step12: Uniprot_gene + Gene_id + Protein_id => Cellular_compartment\nAdd "Cellular_compartment" info\n')
+    test@Cellular_compartment = data.frame(mets = character(), cellularLocation = character())
+    print(test@Cellular_compartment)
+    cat('\n')
+  }
+
+  #step13
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step13',])){
+    cat('step13: KEGG_reaction + Metabolic_reaction => Subsystem_information\nAdd "Subsystem_information" info\n')
+    test@Subsystem_information = data.frame(rxns = character(), subsystem = character())
+    print(test@Subsystem_information)
+    cat('\n')
+   }
+
+  #step15
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step15',])){
+    cat('step15: KEGG_reaction + MetaCyc_reaction + Metabolic_reaction + Metabolites_id => Identifiers_metabolites\nAdd "Identifiers_metabolites" info\n')
+    test@Identifiers_metabolites = data.frame(rxns = character(), identifiers_kegg_rxns = character(), identifiers_metacyc_rxns = character(),
+                                              mets = character(), identifiers_kegg_mets = character(), identifiers_metacyc_mets = character())
+    print(test@Identifiers_metabolites)
+    cat('\n')
+    }
+
+  #step16
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step16',])){
+    cat('step16: Metabolic_reaction + Metabolites_id + Identifiers_metabolites => Uniform_identifier_metabolites\nAdd "Uniform_identifier_metabolites" info\n')
+    test@Uniform_identifier_metabolites = data.frame(rxns = character(), identifiers_kegg_rxns = character(),
+                                                     mets = character(), identifiers_kegg_mets = character())
+    print(test@Uniform_identifier_metabolites)
+    cat('\n')
+    }
+
+  #step21
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step21',])){
+    cat('step21: Spontaneous_reactions + Reconstruction_data => Reconstruction_data\nAdd "Spontaneous_reactions(sp)" info\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(),
+                                    s = c('It is a matrxi(m * (n+sp))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+   }
+
+  #step22
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step22',])){
+    cat('step22: Extracellular_and_periplasmic_transport_reactions + Reconstruction_data => Reconstruction_data\nAdd "Extracellular_and_periplasmic_transport_reactions(ep)" info, update "Reconstruction_data"\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(),
+                                    s = c('It is a matrxi(m * (n+sp+ep))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+   }
+
+  #step23
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step23',])){
+    cat('step23: Exchange_reactions + Reconstruction_data => Reconstruction_data\nAdd "Exchange_reactions(ex)" info, update "Reconstruction_data"\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(),
+                                    s = c('It is a matrxi(m * (n+sp+ep+ex))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+   }
+
+  #step24
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step24',])){
+    cat('step24: Intracellular_transport_reactions + Reconstruction_data => Reconstruction_data\nAdd "Intracellular_transport_reactions(it)" info, update "Reconstruction_data"\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(),
+                                    s = c('It is a matrxi(m * (n+sp+ep+ex+it))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+   }
+
+  #step28
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step28',])){
+    cat('step28: Amino_acid_weight + Amino_acid_molecular_weight + Dry_weight => AA_Coefficient\nAdd "AA_Coefficient" info\n')
+    test@AA_Coefficient = data.frame(aa = character(), coefficient = numeric())
+    print(test@AA_Coefficient)
+    cat('\n')
+    }
+
+  #step30
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step30',])){
+    cat('step30: Nucleotide_weight + Nucleotide_molecular_weight + Dry_weight => Nu_Coefficient\nAdd "Nu_Coefficient" info\n')
+    test@Nu_Coefficient = data.frame(nucleotides = character(), coefficient = numeric())
+    print(test@Nu_Coefficient)
+    cat('\n')
+    }
+
+  #step35
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step35',])){
+    cat('step35: Biomass_reactions + Biomass_metabolites_coefficient + Reconstruction_data => Reconstruction_data\nAdd "Biomass_reactions(br)" info, update "Reconstruction_data"\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(),
+                                    s = c('It is a matrxi(m * (n+sp+ep+ex+it+br))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step37
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step37',])){
+    cat('step37: Demand_reactions + Reconstruction_data => Reconstruction_data\nAdd "Demand_reactions(dr)" info, update "Reconstruction_data"\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(),
+                                    s = c('It is a matrxi(m * (n+sp+ep+ex+it+br+dr))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step38
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step38',])){
+    cat('step38: Sink_reactions + Reconstruction_data => Reconstruction_data\nAdd "Sink_reactions(sr)" info, update "Reconstruction_data"\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(),
+                                    s = c('It is a matrxi(m * (n+sp+ep+ex+it+br+dr+sr))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step42
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step42',])){
+    cat('step42: Reconstruction_data => Scatter_plot_stoichiometric_matrix\nAdd "Scatter_plot_stoichiometric_matrix" info\n')
+    test@Scatter_plot_stoichiometric_matrix = list(ggplot2 = character())
+    print(test@Scatter_plot_stoichiometric_matrix)
+    cat('\n')
+    }
+
+  #step43
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step43',])){
+    cat('step43: Objective_reaction + Reconstruction_data => Reconstruction_data\nAdd "Objective_reaction" info, update "Reconstruction_data"\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step44
+  if( nrow(matrixProcessFile[matrixProcessFile$step_ID =='step44',])){
+    cat('step44: Constraints + Reconstruction_data => Reconstruction_data\nAdd "Constraints" info, update "Reconstruction_data"\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step45
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step45',])){
+    cat('step45: Metabolic_reaction + Test => Elemental_balance\nAdd "Elemental_balance" info\n')
+    test@Elemental_balance = data.frame(rxns = character(), balance = logical())
+    print(test@Elemental_balance)
+    cat('\n')
+    }
+
+  #step46
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step46',])){
+    cat('step46: Metabolic_reaction + Assessment => Mass_Charge_Conservation_Assessment\nAdd "Mass_Charge_Conservation_Assessment" info\n')
+    test@Mass_Charge_Conservation_Assessment = data.frame(rxns = character(), assessment = character())
+    print(test@Mass_Charge_Conservation_Assessment)
+    cat('\n')
+    }
+
+  #step47
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step47',])){
+    cat('step47: Metabolic_reaction => Terminal_metabolites\nAdd "Terminal_metabolites" info\n')
+    test@Terminal_metabolites = data.frame(Terminal_metabolite = character())
+    print(test@Terminal_metabolites)
+    cat('\n')
+    }
+
+  #step48
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step48',])){
+    cat('step48: KEGG_reaction + MetaCyc_reaction + Terminal_metabolites => Gap_reactions\nAdd "Gap_reactions" info\n')
+    test@Gap_reactions = data.frame(Gap_reaction = character())
+    print(test@Gap_reactions)
+    cat('\n')
+    }
+
+  #step49
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step49',])){
+    cat('step49: Gap_reactions + Reconstruction_data => Reconstruction_data\nAdd "Gap_reactions(gr)" info, update "Reconstruction_data"\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr+gr))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step51
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step51',])){
+    cat('step51: Missing_exchange_reactions + Reconstruction_data => Reconstruction_data\nAdd "Missing_exchange_reactions(mr)" info, update "Reconstruction_data"\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr+gr+mr))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step52
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step52',])){
+    cat('step52: Missing_exchange_reactions + Constraints => Reconstruction_data\nAdd "Constraints" info\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr+gr+mr))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step53
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step53',])){
+    cat('step53: Reconstruction_data + Subsystem_information => Type_III_pathway\nAdd "Type_III_pathway" info\n')
+    test@Type_III_pathway = data.frame(TypeIII = character())
+    print(test@Type_III_pathway)
+    cat('\n')
+    }
+
+  #step57
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step57',])){
+    cat('step57: Reconstruction_data + Iteration => Network_gaps\nAdd "Network_gaps" info\n')
+    test@Network_gaps = data.frame(Network_gap = character())
+    print(test@Network_gaps)
+    cat('\n')
+    }
+
+  #step58
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step58',])){
+    cat('step58: Biomass_reactions => Biomass_metabolites\nAdd "Biomass_metabolites" info\n')
+    test@Biomass_metabolites = data.frame(biomets = character())
+    print(test@Biomass_metabolites)
+    cat('\n')
+    }
+
+  #step59
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step59',])){
+    cat('step59: Biomass_metabolites + Demand_reactions + Reconstruction_data => Reconstruction_data\nAdd "Biomass_metabolites demand_reactions(bdr)" info, update "Reconstruction_data"\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr+gr+mr))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step60
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step60',])){
+    cat('step60: Objective_reaction + Demand_reactions + Reconstruction_data => Reconstruction_data\nAdd "Objective_reaction" info\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr+gr+mr))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step61
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step61',])){
+    cat('step61: min_or_max + Objective_reaction + Reconstruction_data => Reconstruction_data\nAdd "min_or_max" info, update "Reconstruction_data"\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(), max = logical(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step62
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step62',])){
+    cat('step62: Reconstruction_data + FBA => Metabolic_flux_value\nAdd "Metabolic_flux_value" info\n')
+    test@Metabolic_flux_value = data.frame(rxns = character(), flux = numeric())
+    print(test@Metabolic_flux_value)
+    cat('\n')
+    }
+
+  #step63
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step63',])){
+    cat('step63: Constraints + Reconstruction_data + Rich_media => Growth\n"test model"\n')
+    test@Growth = logical()
+    print(test@Growth)
+    cat('\n')
+    }
+
+  #step65
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step65',])){
+    cat('step65: Constraints + Secretions + Reconstruction_data => Reconstruction_data\nAdd "Constraints" info\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr+gr+mr))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step66
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step66',])){
+    cat('step66: Objective_reaction + Secretions + Reconstruction_data => Reconstruction_data\nAdd "Objective_reaction" info\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr+gr+mr))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step67
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step67',])){
+    cat('step67: Secretions + min_or_max + Reconstruction_data => Reconstruction_data\nAdd "min_or_max" info\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr+gr+mr))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step68
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step68',])){
+    cat('step68: Constraints + Mutisecretion + Reconstruction_data => Reconstruction_data\nAdd "Constraints" info\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr+gr+mr))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step70
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step70',])){
+    cat('step70: Secretions + Exchange_reactions + Reconstruction_data => Reconstruction_data\nAdd "Secretion exchange_reactions(ser)" info, update "Reconstruction_data"\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr+gr+mr+ser))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step71
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step71',])){
+    cat('step71: Objective_reaction + Mutisecretion + Reconstruction_data => Reconstruction_data\nAdd "Objective_reaction" info\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr+gr+mr+ser))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step72
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step72',])){
+    cat('step72: Mutisecretion + min_or_max + Reconstruction_data => Reconstruction_data\nAdd "min_or_max" info\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr+gr+mr+ser))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step73
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='ste73',])){
+    cat('step73: Constraints + Rich_media + Reconstruction_data => Reconstruction_data\nAdd "Constraints" info\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr+gr+mr+ser))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step74
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step74',])){
+    cat('step74: Reconstruction_data + Metabolic_reaction => Block_reactions\nAdd "Block_reactions" info\n')
+    test@Block_reactions = data.frame(blockrxns = character())
+    print(test@Block_reactions)
+    cat('\n')
+    }
+
+  #step75
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step75',])){
+    cat('step75: Block_reactions + Metabolites_id + Reconstruction_data => Reconstruction_data\nAdd "Block_reactions(blr)" info, update "Reconstruction_data"\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr+gr+mr+ser+blr))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+    }
+
+  #step76
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step76',])){
+    cat('step76: Gene_id + Knockout + Reconstruction_data => Metabolic_flux_value\nAdd "Metabolic_flux_value" info\n')
+    test@Metabolic_flux_value = data.frame(rxns = character(), flux = numeric())
+    print(test@Metabolic_flux_value)
+    cat('\n')
+    }
+
+  #step79
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step79',])){
+    cat('step79: Knockout + Metabolic_reaction + Reconstruction_data => Metabolic_flux_value\nAdd "Metabolic_flux_value" info\n')
+    test@Metabolic_flux_value = data.frame(rxns = character(), flux = numeric())
+    print(test@Metabolic_flux_value)
+    cat('\n')
+    }
+
+  #step80
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step80',])){
+    cat('step80: Constraints + Reconstruction_data => Model_predict_correctly\nAdd "Model_predict_correctly" info\n')
+    test@Model_predict_correctly = logical()
+    print(test@Model_predict_correctly)
+    cat('\n')
+      }
+
+  #step83
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step83',])){
+    cat('step83: Rich_media + Biomass_reactions + min_or_max + Reconstruction_data => Reconstruction_data\nAdd "min_or_max" info\n')
+    test@Reconstruction_data = list(rxns = character(), mets = character(), gpr = character(), obj = numeric(),
+                                    s = c('It is a matrxi(m * (n+s+ep+ex+it+br+dr+sr+gr+mr+ser+blr))'), lb = numeric(), ub = numeric())
+    print(test@Reconstruction_data)
+    cat('\n')
+      }
+
+  #step90
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step90',])){
+    cat('step90: Knockout + Metabolic_reaction => Model_growing_too_fast\nAdd "Model_growing_too_fast" info\n')
+    test@Model_growing_too_fast = logical()
+    print(test@Model_growing_too_fast)
+    cat('\n')
+      }
+
+  #step93
+  if(nrow(matrixProcessFile[matrixProcessFile$step_ID =='step93',])){
+    cat('step93: Reconstruction_data + Output => File\nAdd "File" info\n')
+    test@File = character()
+    cat('\n')
+      }
+    }

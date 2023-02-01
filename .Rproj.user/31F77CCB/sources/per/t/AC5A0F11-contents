@@ -1,0 +1,28 @@
+#' @title vizTools
+#' @description Input the txt and output the visualization of the steps, transformation and databases and tools.
+#' @param text The characters processed with the collapse = ' '.
+#' @param stepTypes An excel contains the labels and groups of the metabolic reconstructions steps. The default file is in the data.
+#' @param toolsMatrix An excel contains the marker words, threshold value, steps, group and other information about the metabolic reconstruction databases and tools. The default file is in the data.
+#' @param toolsTypes An excel contains the databases and the tools used in the metabolic reconstruction.
+#' @return The pictures that visualize the databases and tools of the metabolic reconstruction.
+#' @export
+#' @import tidyverse
+#' @examples
+#'
+#' exam <- vizTools(text, toolsMatrix, stepTypes, toolsTypes)
+
+vizTools <- function(text, toolsMatrix, stepTypes, toolsTypes){
+
+  wordsMatrixTools <- get_term_matrix(text)
+  matrixTools <- map_word_to_step(wordsMatrixTools, toolsMatrix)
+
+  dataTools <- matrixTools[!apply(matrixTools, 1, function(x){all(x == 0)}),]
+  dataTools <- dataTools[,!apply(dataTools, 2, function(x){all(x == 0)})]
+
+  if(min(dim(dataTools)) > 1 & !is.infinite(min(dim(dataTools)))){
+    matrixToolsFigure <- draw_conversion_tree(matrixTools, toolsMatrix, stepTypes, toolsTypes)
+    return(matrixToolsFigure)
+  } else {
+    print("Literature information content is too little.")
+  }
+}

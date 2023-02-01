@@ -1,0 +1,43 @@
+#' @title vizProcess
+#' @description Input the txt and output the visualization of the steps, transformation and databases and tools.
+#' @details Input takes a data.frame x with two variables v and w and returns the maximum knapsack value and which elements (rows in the data.frame).
+#' @param text The characters processed with the collapse = ' '.
+#' @param stepsMatrix An excel contains the marker words, threshold value, steps, group and other information about the metabolic reconstruction. The default file is in the data.
+#' @param stepTypes An excel contains the labels and groups of the metabolic reconstructions steps. The default file is in the data.
+#' @param contentTypes An excel contains the labels and groups of the metabolic reconstructions content The default file is in the data.
+#' @param variable An excel contains three different variables.
+#' @return The pictures that visualize the steps of the metabolic reconstruction.
+#' @import SnowballC
+#' @export
+#' @examples
+#' exam <- vizProcess(text, stepsMatrix, stepTypes, contentTypes, variable)
+
+  vizProcess <- function(text, stepsMatrix, stepTypes, contentTypes, variable){
+
+  wordsMatrix <- get_term_matrix(text)
+
+  matrixProcess <- map_word_to_step(wordsMatrix, stepsMatrix)
+  matrixProcessFile <- data.frame(step = rownames(matrixProcess),degree = matrixProcess$degree)
+  matrixProcessFile <- matrixProcessFile%>%mutate(step_ID = paste0('step',rownames(matrixProcessFile)),.before = step)%>%filter(degree != 0 )
+
+  # delete the information of the frequency
+  dataProcess <- matrixProcess[,-1]
+  # NA is transformed into 0
+  dataProcess[is.na(dataProcess)] = 0
+  # delete the rows or columns that all of which are 0
+  dataProcess <- dataProcess[!apply(dataProcess, 1, function(x){all(x == 0)}),]
+  dataProcess <- dataProcess[,!apply(dataProcess, 2, function(x){all(x == 0)})]
+
+  if(any(dim(dataProcess))){
+  matrixProcessFigure <- draw_step_tree(matrixProcess, stepsMatrix, stepTypes, contentTypes)
+  matrixProcessFigure
+  return(matrixProcessFigure)
+  } else {
+  next
+  }
+
+  convert_2_step(matrixProcessFile, variable)
+
+  }
+
+
